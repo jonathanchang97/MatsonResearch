@@ -4,8 +4,9 @@ import os
 import math
 import matplotlib.pyplot as plt
 
+
 def getListOfFiles(dirName):
-    listOfFile = os.listdir('frames(20633-20650)')
+    listOfFile = os.listdir('frames20633-20650')
     allFiles = list()
     for entry in listOfFile:
         # Create full path
@@ -18,10 +19,65 @@ def getListOfFiles(dirName):
                 
     return allFiles   
 
-def processImage(img):
-    height, width = img.shape[0:2]
 
-    thresh = 68
+def sort_contours(cnts):
+    # initialize the reverse flag and sort index
+    reverse = False
+    i = 1
+ 
+    # # handle if we need to sort in reverse
+    # if method == "right-to-left" or method == "bottom-to-top":
+    #     reverse = True
+ 
+    # # handle if we are sorting against the y-coordinate rather than
+    # # the x-coordinate of the bounding box
+    # if method == "top-to-bottom" or method == "bottom-to-top":
+    #     i = 1
+ 
+    # construct the list of bounding boxes and sort them from top to
+    # bottom
+    boundingBoxes = [cv2.boundingRect(c) for c in cnts]
+    (cnts, boundingBoxes) = zip(*sorted(zip(cnts, boundingBoxes),
+        key=lambda b:b[1][i], reverse=reverse))
+ 
+    # return the list of sorted contours and bounding boxes
+    return (cnts, boundingBoxes)
+
+
+def draw_num_on_contour(img, c, i, color):
+    # compute the center of the contour area and draw a circle
+    # representing the center
+    M = cv2.moments(c)
+    cX = int(M["m10"] / M["m00"])
+    cY = int(M["m01"] / M["m00"])
+ 
+    # draw the countour number on the image
+    cv2.putText(img, "#{}".format(i + 1), (cX - 20, cY), cv2.FONT_HERSHEY_SIMPLEX,
+        1.0, color, 2)
+ 
+    # return the image with the contour number drawn on it
+    return img
+
+
+def draw_defect_lines_on_contour(img, c, defects, color):
+    if defects is not None:
+        for i in range(defects.shape[0]):
+            s,e,f,d = defects[i,0]
+            start = tuple(c[s][0])
+            end = tuple(c[e][0])
+            far = tuple(c[f][0])
+            cv2.line(img,start,end,color,2)
+            #cv2.circle(imgBlack,far,5,color,-1)
+    return img
+
+
+def processImage(img, num):
+    #height, width = img.shape[0:2]
+    thickness = 3
+    color = (255, 0, 255)
+    imgContours = img.copy()
+
+    thresh = 75
     # change to easier to deal with black and white image
     ret, thresh = cv2.threshold(img, thresh, 255, cv2.THRESH_BINARY)
 
@@ -30,46 +86,46 @@ def processImage(img):
     # remove noise in image and leave only the circles, erodes, then dilates
     imgOpening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
 
-
     # contours on adjusted image to create shape
-    contours, hierarchy = cv2.findContours(imgOpening, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    cnts, hierarchy = cv2.findContours(imgOpening, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # Get rid of any lingering small contours and only keep the 3 of interest
+    cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:3]
 
-    imgContours = img.copy()
-    index = -1
-    thickness = 3
-    color = (255, 0, 255)
+    # sort the contours according to the provided method
+    (cnts, boundingBoxes) = sort_contours(cnts)
 
 
     #objects = np.zeros([imgOpening.shape[0], imgOpening.shape[1], 3], np.uint8)
     imgBlack = np.zeros([imgOpening.shape[0], imgOpening.shape[1], 3], np.uint8)
 
+    areaList = []
+    i = 0
 
-    for c in contours:
+    for c in cnts:
         hull = cv2.convexHull(c, returnPoints=False)
         defects = cv2.convexityDefects(c, hull)
         hull = cv2.convexHull(c)
         area = cv2.contourArea(hull)
-        print("Convex Area: {}".format(area))
-
-        if defects is not None:
-            for i in range(defects.shape[0]):
-                s,e,f,d = defects[i,0]
-                start = tuple(c[s][0])
-                end = tuple(c[e][0])
-                far = tuple(c[f][0])
-                cv2.line(imgBlack,start,end,color,2)
-                # for comparison purposes
-                cv2.line(img,start,end,color,2)
-                #cv2.circle(imgBlack,far,5,color,-1)
 
 
+        areaList.append(area)
+        # print("Convex Area: {}".format(area))
 
-    cv2.imwrite("segmented-image.png", imgOpening)
-    cv2.imwrite("contour-on-original-image.png", img)
-    cv2.imwrite("contour-on-black-image.png", imgBlack)
+        img = draw_defect_lines_on_contour(img, c, defects, color)
+        imgBlack = draw_defect_lines_on_contour(imgBlack, c, defects, color)
+
+        img = draw_num_on_contour(img, c, i, color)
+        imgBlack = draw_num_on_contour(imgBlack, c, i, color)
+
+        i += 1;
+
+    cv2.imwrite("processed-images/segmented-image" + num + ".png", imgOpening)
+    cv2.imwrite("processed-images/contour-on-original-image" + num + ".png", img)
+    cv2.imwrite("processed-images/contour-on-black-image" + num + ".png", imgBlack)
     # cv2.imwrite("fixed-contour-image.png", imgContours)
 
-    return area
+    return areaList
+
 
 def main():
     dirName = 'frames(20633-20650)';
@@ -77,38 +133,23 @@ def main():
     # Get the list of all files in directory tree at given path
     listOfFiles = getListOfFiles(dirName)
 
-    # for files in listOfFiles:
-    #     img = cv2.imread(files, 0)
-    #     area = processImage(img)
+    img = cv2.imread("frames20633-20650/scene00001.png", 0)
+    areaList = processImage(img, "1")
+    for a in areaList:
+        print("Convex Area: {}".format(a))
 
-    plt.plot([1,2,3,4])
-    plt.ylabel('some numbers')
-    plt.show()
-    plt.savefig('plots/basic-plot.png')
+    # for file in listOfFiles:
+    #     img = cv2.imread(file, 0)
+    #     areaList = processImage(img)
+    #     print("Image: {}".format(file))
+    #     for a in areaList:
+    #         print("Convex Area: {}".format(a))
+
+    # plt.plot([1,2,3,4])
+    # plt.ylabel('some numbers')
+    # plt.show()
+    # plt.savefig('plots/basic-plot.png')
     
 
 if __name__ == '__main__':
     main()
-
-
-
-
-
-
-# imgBlack = cv2.cvtColor(imgBlack, cv2.COLOR_BGR2GRAY)
-# contours2, hierarchy2 = cv2.findContours(imgBlack, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-# objects2 = np.zeros([imgOpening.shape[0], imgOpening.shape[1], 3], np.uint8)
-
-# for c in contours2:
-#     cv2.drawContours(imgContours, [c], -1, color, -1)
-
-#     # area, perimeter, etc
-#     area = cv2.contourArea(c)
-#     perimeter = cv2.arcLength(c, True)
-
-#     M = cv2.moments(c)
-#     cx = int(M['m10']/M['m00'])
-#     cy = int(M['m01']/M['m00'])
-#     cv2.circle(imgContours,(cx,cy), 4, (0,0,255), -1)
-
-#     print("Area: {}, perimeter, {}".format(area, perimeter))
