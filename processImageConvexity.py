@@ -20,6 +20,32 @@ def getListOfFiles(dirName):
     return allFiles   
 
 
+def apply_brightness_contrast(input_img, brightness, contrast):
+
+    if brightness != 0:
+        if brightness > 0:
+            shadow = brightness
+            highlight = 255
+        else:
+            shadow = 0
+            highlight = 255 + brightness
+        alpha_b = (highlight - shadow)/255
+        gamma_b = shadow
+
+        buf = cv2.addWeighted(input_img, alpha_b, input_img, 0, gamma_b)
+    else:
+        buf = input_img.copy()
+
+    if contrast != 0:
+        f = 131*(contrast + 127)/(127*(131-contrast))
+        alpha_c = f
+        gamma_c = 127*(1-f)
+
+        buf = cv2.addWeighted(buf, alpha_c, buf, 0, gamma_c)
+
+    return buf
+
+
 def sort_contours(cnts):
     # initialize the reverse flag and sort index
     reverse = False
@@ -38,7 +64,7 @@ def sort_contours(cnts):
     # bottom
     boundingBoxes = [cv2.boundingRect(c) for c in cnts]
     (cnts, boundingBoxes) = zip(*sorted(zip(cnts, boundingBoxes),
-        key=lambda b:b[1][i], reverse=reverse))
+        key=lambda b:b[1][i]+b[1][3], reverse=reverse))
  
     # return the list of sorted contours and bounding boxes
     return (cnts, boundingBoxes)
@@ -72,14 +98,33 @@ def draw_defect_lines_on_contour(img, c, defects, color):
 
 
 def processImage(img, num):
-    #height, width = img.shape[0:2]
+    # crop image to top view only
+    # y = 115
+    # x = 30
+    # h = 250
+    # w = 300
+    # img = img[y:y+h, x:x+w]
+
     thickness = 3
     color = (255, 0, 255)
     imgContours = img.copy()
 
-    thresh = 35
+    # Increase contrast in the image
+    brightness = 50
+    contrast = 50
+    imgContrast = apply_brightness_contrast(img, brightness, contrast)
+    # contrast = 40
+
+    # f = 131*(contrast + 127)/(127*(131-contrast))
+    # alpha_c = f
+    # gamma_c = 127*(1-f)
+
+    # imgContrast = cv2.addWeighted(img, alpha_c, img, 0, gamma_c)
+
+
+    thresh = 65
     # change to easier to deal with black and white image
-    ret, thresh = cv2.threshold(img, thresh, 255, cv2.THRESH_BINARY)
+    ret, thresh = cv2.threshold(imgContrast, thresh, 255, cv2.THRESH_BINARY)
 
     # eliminate noise in image
     kernel = np.ones((7,7), 'uint8')
@@ -119,6 +164,7 @@ def processImage(img, num):
 
         i += 1;
 
+    cv2.imwrite("processed-images/contrast-image" + num + ".png", imgContrast)
     cv2.imwrite("processed-images/segmented-image" + num + ".png", imgOpening)
     cv2.imwrite("processed-images/contour-on-original-image" + num + ".png", img)
     cv2.imwrite("processed-images/contour-on-black-image" + num + ".png", imgBlack)
@@ -137,10 +183,15 @@ def main():
     # areaList = processImage(img, "1")
     # for a in areaList:
     #     print("Convex Area: {}".format(a))
+
     i = 1;
 
     for file in listOfFiles:
         img = cv2.imread(file, 0)
+        if img is None:
+            print("Could not open or find the image " + file + "!\n")
+            continue
+    
         areaList = processImage(img, str(i))
         print("Image: {}".format(file))
         for a in areaList:
