@@ -110,10 +110,16 @@ def processImage(img, num):
     imgContours = img.copy()
 
     # Increase contrast in the image
-    # brightness = 20
-    # contrast = 50
-    # imgContrast = apply_brightness_contrast(img, brightness, contrast)
-    imgContrast = img
+    brightness = 50
+    contrast = 50
+    imgContrast = apply_brightness_contrast(img, brightness, contrast)
+    # contrast = 40
+
+    # f = 131*(contrast + 127)/(127*(131-contrast))
+    # alpha_c = f
+    # gamma_c = 127*(1-f)
+
+    # imgContrast = cv2.addWeighted(img, alpha_c, img, 0, gamma_c)
 
 
     thresh = 65
@@ -178,24 +184,20 @@ def main():
     # for a in areaList:
     #     print("Convex Area: {}".format(a))
 
-    i = 0;
-    areaList = []
+    i = 1;
 
     for file in listOfFiles:
         img = cv2.imread(file, 0)
         if img is None:
             print("Could not open or find the image " + file + "!\n")
             continue
-        
-        areas = processImage(img, str(i + 1))
-        areaList.append(areas)
+    
+        areaList = processImage(img, str(i))
         print("Image: {}".format(file))
-        for a in areaList[i]:
+        for a in areaList:
             print("Convex Area: {}".format(a))
         i += 1;
 
-    timeList = []
-    
 
     plt.plot([1,2,3,4])
     plt.ylabel('some numbers')
