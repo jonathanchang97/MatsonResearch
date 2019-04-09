@@ -77,7 +77,7 @@ def processImage(img, num):
     color = (255, 0, 255)
     imgContours = img.copy()
 
-    thresh = 75
+    thresh = 35
     # change to easier to deal with black and white image
     ret, thresh = cv2.threshold(img, thresh, 255, cv2.THRESH_BINARY)
 
@@ -128,27 +128,30 @@ def processImage(img, num):
 
 
 def main():
-    dirName = 'frames(20633-20650)';
+    dirName = 'frames20633-20650';
     
     # Get the list of all files in directory tree at given path
     listOfFiles = getListOfFiles(dirName)
 
-    img = cv2.imread("frames20633-20650/scene00001.png", 0)
-    areaList = processImage(img, "1")
-    for a in areaList:
-        print("Convex Area: {}".format(a))
+    # img = cv2.imread("frames20633-20650/scene00001.png", 0)
+    # areaList = processImage(img, "1")
+    # for a in areaList:
+    #     print("Convex Area: {}".format(a))
+    i = 1;
 
-    # for file in listOfFiles:
-    #     img = cv2.imread(file, 0)
-    #     areaList = processImage(img)
-    #     print("Image: {}".format(file))
-    #     for a in areaList:
-    #         print("Convex Area: {}".format(a))
+    for file in listOfFiles:
+        img = cv2.imread(file, 0)
+        areaList = processImage(img, str(i))
+        print("Image: {}".format(file))
+        for a in areaList:
+            print("Convex Area: {}".format(a))
+        i += 1;
 
-    # plt.plot([1,2,3,4])
-    # plt.ylabel('some numbers')
-    # plt.show()
-    # plt.savefig('plots/basic-plot.png')
+
+    plt.plot([1,2,3,4])
+    plt.ylabel('some numbers')
+    plt.show()
+    plt.savefig('plots/basic-plot.png')
     
 
 if __name__ == '__main__':
