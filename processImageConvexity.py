@@ -195,12 +195,26 @@ def main():
         i += 1;
 
     timeList = []
-    
+    time = 224743.447
+    # to 224759.845
+    for x in range(len(listOfFiles)):
+        timeList.append(time)
+        time += .0344495798
+        if len(areaList[x]) < 3 or areaList[x][0] <= 1800:
+            areaList[x][0] = (areaList[x-1][0])
 
-    plt.plot([1,2,3,4])
-    plt.ylabel('some numbers')
-    plt.show()
-    plt.savefig('plots/basic-plot.png')
+    areaList1 = [item[0] for item in areaList]
+            
+
+    plt.plot(timeList, areaList1)
+    plt.xlabel('time')
+    plt.ylabel('area (pixels)')
+    plt.savefig('plots/top-view1.png')
+
+    # plt.plot([1,2,3,4])
+    # plt.ylabel('some numbers')
+    # plt.show()
+    # plt.savefig('plots/basic-plot.png')
     
 
 if __name__ == '__main__':
