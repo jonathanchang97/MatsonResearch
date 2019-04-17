@@ -79,32 +79,21 @@ def draw_num_on_contour(img, c, i, color):
  
     # draw the countour number on the image
     cv2.putText(img, "#{}".format(i + 1), (cX - 20, cY), cv2.FONT_HERSHEY_SIMPLEX,
-        1.0, color, 1)
+        1.0, color, 2)
  
     # return the image with the contour number drawn on it
     return img
 
 
-def draw_defect_lines_on_contour(img, c, defects, color):
-    if defects is not None:
-        for i in range(defects.shape[0]):
-            s,e,f,d = defects[i,0]
-            start = tuple(c[s][0])
-            end = tuple(c[e][0])
-            far = tuple(c[f][0])
-            cv2.line(img,start,end,color,1)
-            #cv2.circle(imgBlack,far,5,color,-1)
-    return img
-
-
 def processImage(img, num):
-    #crop image to top view only
+    # crop image to top view only
     # y = 115
     # x = 30
     # h = 250
     # w = 300
     # img = img[y:y+h, x:x+w]
 
+    thickness = 3
     color = (255, 0, 255)
     imgContours = img.copy()
 
@@ -112,14 +101,12 @@ def processImage(img, num):
     # brightness = 20
     # contrast = 50
     # imgContrast = apply_brightness_contrast(img, brightness, contrast)
-    #imgContrast = img
+    imgContrast = img
 
-    # Gaussian blur to reduce noise and accuracy
-    imgBlur = cv2.GaussianBlur(img,(5,5),0)
 
-    thresh = 55
+    thresh = 65
     # change to easier to deal with black and white image
-    ret, thresh = cv2.threshold(imgBlur, thresh, 255, cv2.THRESH_BINARY)
+    ret, thresh = cv2.threshold(imgContrast, thresh, 255, cv2.THRESH_BINARY)
 
     # eliminate noise in image
     kernel = np.ones((7,7), 'uint8')
@@ -145,24 +132,20 @@ def processImage(img, num):
     i = 0
 
     for c in cnts:
-        hull = cv2.convexHull(c, returnPoints=False)
-        defects = cv2.convexityDefects(c, hull)
-        hull = cv2.convexHull(c, False)
-        area = cv2.contourArea(hull)
+        (x,y),radius = cv2.minEnclosingCircle(c)
+        center = (int(x),int(y))
+        radius = int(radius)
+        cv2.circle(img,center,radius,color,1)
 
-        areaList.append(area)
-        # print("Convex Area: {}".format(area))
-
-        cv2.drawContours(img, hull, -1, color, -1)
-        #img = draw_defect_lines_on_contour(img, c, defects, color)
-        imgBlack = draw_defect_lines_on_contour(imgBlack, c, defects, color)
+        areaList.append(radius)
+        # print("Ellipse Area: {}".format(area))
 
         img = draw_num_on_contour(img, c, i, color)
         imgBlack = draw_num_on_contour(imgBlack, c, i, color)
 
         i += 1;
 
-    #cv2.imwrite("processed-images/contrast-image" + num + ".png", img)
+    cv2.imwrite("processed-images/contrast-image" + num + ".png", imgContrast)
     cv2.imwrite("processed-images/segmented-image" + num + ".png", imgOpening)
     cv2.imwrite("processed-images/contour-on-original-image" + num + ".png", img)
     # cv2.imwrite("processed-images/contour-on-black-image" + num + ".png", imgBlack)
