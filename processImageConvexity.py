@@ -138,12 +138,12 @@ def processImage(img, num):
     (cnts, boundingBoxes) = sort_contours(cnts)
 
 
-    #objects = np.zeros([imgOpening.shape[0], imgOpening.shape[1], 3], np.uint8)
     imgBlack = np.zeros([imgOpening.shape[0], imgOpening.shape[1], 3], np.uint8)
 
     areaList = []
     i = 0
 
+    # Find convexity defects and store area along with the images
     for c in cnts:
         hull = cv2.convexHull(c, returnPoints=False)
         defects = cv2.convexityDefects(c, hull)
@@ -153,20 +153,47 @@ def processImage(img, num):
         areaList.append(area)
         # print("Convex Area: {}".format(area))
 
-        cv2.drawContours(img, hull, -1, color, -1)
-        #img = draw_defect_lines_on_contour(img, c, defects, color)
-        imgBlack = draw_defect_lines_on_contour(imgBlack, c, defects, color)
+        img = draw_defect_lines_on_contour(img, c, defects, color)
+        cv2.drawContours(imgBlack, [hull], -1, color, -1)
+        #imgBlack = draw_defect_lines_on_contour(imgBlack, c, defects, color)
 
         img = draw_num_on_contour(img, c, i, color)
         imgBlack = draw_num_on_contour(imgBlack, c, i, color)
 
         i += 1;
 
-    #cv2.imwrite("processed-images/contrast-image" + num + ".png", img)
-    cv2.imwrite("processed-images/segmented-image" + num + ".png", imgOpening)
-    cv2.imwrite("processed-images/contour-on-original-image" + num + ".png", img)
+
+    cv2.imwrite("processed-images/contour-on-black-image" + num + ".png", imgBlack)
+    imgBlack = cv2.imread("processed-images/contour-on-black-image" + num + ".png", 0)
+
+
+    # # For finding the circle
+    # # Find the contours of the new corrected image
+    # cnts, hierarchy = cv2.findContours(imgBlack, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    # # Get rid of any lingering small contours and only keep the 3 of interest
+    # cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:3]
+    # # sort the contours according to the provided method
+    # (cnts, boundingBoxes) = sort_contours(cnts)
+
+    # widthList = []
+
+    # # Find convexity defects and store area along with the images
+    # for c in cnts:
+    #     (x,y),radius = cv2.minEnclosingCircle(c)
+    #     center = (int(x),int(y))
+    #     radius = radius
+    #     cv2.circle(imgBlack,center,int(radius),color,1)
+
+    #     # x,y,w,h = cv2.boundingRect(c)
+    #     widthList.append(radius)
+    #     # cv2.rectangle(imgBlack,(x,y),(x+w,y+h),color,1)
+
+    # #cv2.imwrite("processed-images/contrast-image" + num + ".png", img)
+    # #cv2.imwrite("processed-images/segmented-image" + num + ".png", imgOpening)
+    # cv2.imwrite("processed-images/contour-on-original-image" + num + ".png", img)
     # cv2.imwrite("processed-images/contour-on-black-image" + num + ".png", imgBlack)
-    # cv2.imwrite("fixed-contour-image.png", imgContours)
+    # # cv2.imwrite("fixed-contour-image.png", imgContours)
 
     return areaList
 
@@ -214,10 +241,37 @@ def main():
 
     areaList1 = [item[0] for item in areaList]
     areaList2 = [item[2] for item in areaList]
-            
 
-    plt.plot(timeList1, areaList1, label = "top")
-    plt.plot(timeList2, areaList2, label = "bottom")
+    plotList1 = list(zip(timeList1, areaList1))
+    plotList2 = list(zip(timeList2, areaList2))
+
+    # plotListAdjusted1 = [item for item in plotList1 if item[1] > 2375]
+    # plotListAdjusted2 = [item for item in plotList2 if item[1] > 2375]
+
+    plotListAdjusted1 = [plotList1[0]]
+    plotListAdjusted2 = [plotList2[0]]
+
+    pointsLength = len(plotList1) - 1
+    for x in range(pointsLength):
+        if abs(plotList1[x][1] - plotList1[x+1][1]) < 60:
+            plotListAdjusted1.append(plotList1[x+1])
+        if abs(plotList2[x][1] - plotList2[x+1][1]) < 60:
+            plotListAdjusted2.append(plotList2[x+1])
+
+    x1 = [] 
+    y1 = []
+    x2 = []
+    y2 = []
+    x1 = [item[0] for item in plotList1]
+    y1 = [item[1] for item in plotList1]
+    x2 = [item[0] for item in plotList2]
+    y2 = [item[1] for item in plotList2]
+
+
+    # plt.plot(timeList1, areaList1, label = "top")
+    # plt.plot(timeList2, areaList2, label = "bottom")
+    plt.plot(x1, y1, label = "top")
+    plt.plot(x2, y2, label = "bottom")
     plt.xlabel('time')
     plt.ylabel('area (pixels)')
     plt.title('top-view-' + dirName[7:])
